@@ -10,6 +10,10 @@ function getTransporter() {
   transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user, pass },
+    // Fail fast if connection hangs (common in free hosting)
+    connectionTimeout: 2000,
+    greetingTimeout: 2000,
+    socketTimeout: 5000,
   });
   return transporter;
 }

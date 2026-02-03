@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: [true, 'Email is mandatory'],
-    unique: true, 
+    default: null,
+    unique: true,
+    sparse: true,
     lowercase: true,
     trim: true,
   },

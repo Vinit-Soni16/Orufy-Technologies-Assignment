@@ -33,15 +33,11 @@ async function findUserByIdentifier(identifier) {
   const trimmed = identifier.trim();
   if (isEmail(trimmed)) {
     const lower = trimmed.toLowerCase();
-    const user = await User.findOne({ email: lower });
-    if (user) return user;
-    return await User.findOne({ email: trimmed });
+    return await User.findOne({ email: lower });
   }
   if (isPhone(trimmed)) {
     const phoneNorm = normalizePhone(trimmed);
-    const user = await User.findOne({ phone: phoneNorm });
-    if (user) return user;
-    return await User.findOne({ email: `phone_${phoneNorm}` });
+    return await User.findOne({ phone: phoneNorm });
   }
   return null;
 }
@@ -69,10 +65,6 @@ exports.signup = async (req, res) => {
 
     const emailNorm = emailStr ? emailStr.toLowerCase() : null;
     const phoneNorm = phoneStr ? normalizePhone(phoneStr) : null;
-    const storeEmail = emailNorm || (phoneNorm ? `phone_${phoneNorm}` : null);
-    if (!storeEmail) {
-      return res.status(400).json({ success: false, message: 'Please enter email or phone.' });
-    }
 
     if (emailNorm) {
       const existing = await User.findOne({ email: emailNorm });
@@ -81,7 +73,7 @@ exports.signup = async (req, res) => {
       }
     }
     if (phoneNorm) {
-      const existing = await User.findOne({ $or: [{ phone: phoneNorm }, { email: storeEmail }] });
+      const existing = await User.findOne({ phone: phoneNorm });
       if (existing) {
         return res.status(400).json({ success: false, message: 'An account with this phone already exists. Please login.' });
       }
@@ -89,7 +81,7 @@ exports.signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(passwordStr, 10);
     const user = await User.create({
-      email: storeEmail,
+      email: emailNorm || null,
       phone: phoneNorm || null,
       password: hashedPassword,
       isVerified: true,
@@ -97,12 +89,17 @@ exports.signup = async (req, res) => {
 
     const sendTo = emailNorm;
     if (sendTo && isEmail(sendTo)) {
-      const { sent, error } = await sendWelcomeEmail(sendTo);
-      if (sent === false && error) {
-        console.error('[Auth] Welcome email failed:', error);
-      }
-      if (!sent && !error) {
-        console.log(`[DEV] Welcome email would be sent to ${sendTo}`);
+      try {
+        // Run in background/non-blocking or just catch error so we don't fail the request
+        sendWelcomeEmail(sendTo).then(({ sent, error }) => {
+          if (sent === false && error) {
+            console.error('[Auth] Welcome email failed (non-fatal):', error);
+          } else if (!sent && !error) {
+            console.log(`[DEV] Welcome email would be sent to ${sendTo}`);
+          }
+        }).catch(err => console.error('[Auth] Welcome email crash:', err));
+      } catch (e) {
+        console.error('[Auth] Welcome email setup error:', e);
       }
     }
 
@@ -151,9 +148,11 @@ exports.sendLoginOTP = async (req, res) => {
       const result = await sendOTPEmail(sendToEmail, otp);
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
-        return res.status(500).json({
-          success: false,
-          message: `Could not send OTP to email: ${error}. Set GMAIL_USER and GMAIL_APP_PASSWORD in .env`,
+        console.error('Email send failed (Dev Mode fallback):', error);
+        return res.status(200).json({
+          success: true,
+          message: `Email Failed (${error}). Dev Mode: OTP is ${otp}`,
+          devOtp: otp,
         });
       }
       if (sent) {
@@ -170,9 +169,11 @@ exports.sendLoginOTP = async (req, res) => {
       const result = await sendOTPSMS(identifier, otp);
       const { sent, error, devOtp } = result;
       if (sent === false && error && !devOtp) {
-        return res.status(500).json({
-          success: false,
-          message: `Could not send OTP to phone: ${error}. Check Twilio settings in .env`,
+        console.error('SMS send failed (Dev Mode fallback):', error);
+        return res.status(200).json({
+          success: true,
+          message: `SMS Failed (${error}). Dev Mode: OTP is ${otp}`,
+          devOtp: otp,
         });
       }
       if (sent) {
