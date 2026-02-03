@@ -37,8 +37,18 @@ const MONGODB_URI = process.env.MONGODB_URI;
 /* -------------------- DB + SERVER -------------------- */
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB connected successfully');
+
+    // FIX: Drop problematic index causing "E11000 duplicate key error collection: test.users index: phone_1 dup key: { phone: null }"
+    try {
+      const usersCollection = mongoose.connection.collection('users');
+      // We attempt to drop it. If it doesn't exist, it errors, which we catch and ignore.
+      await usersCollection.dropIndex('phone_1');
+      console.log('[Fix] Dropped old phone_1 index. Mongoose will recreate it correctly as sparse.');
+    } catch (err) {
+      console.log('[Info] phone_1 index cleanup: ', err.message); // Likely "index not found", which is fine
+    }
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

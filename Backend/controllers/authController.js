@@ -81,8 +81,8 @@ exports.signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(passwordStr, 10);
     const user = await User.create({
-      email: emailNorm || null,
-      phone: phoneNorm || null,
+      email: emailNorm || undefined,
+      phone: phoneNorm || undefined,
       password: hashedPassword,
       isVerified: true,
     });
