@@ -296,7 +296,7 @@ const ProductCard = ({ product, onEdit, onDelete, onTogglePublish }) => {
       {/* Buttons */}
       <div className="flex items-center gap-2">
         <button 
-          onClick={() => onTogglePublish(product.id)}
+          onClick={() => onTogglePublish(product._id)}
           className={`flex-1 py-1.5 rounded-lg font-medium text-xs transition-colors shadow-sm truncate px-1 ${
             product.published 
               ? 'bg-[#4CAF50] hover:bg-[#43a047] text-white' 
@@ -312,7 +312,7 @@ const ProductCard = ({ product, onEdit, onDelete, onTogglePublish }) => {
           Edit
         </button>
         <button 
-          onClick={() => onDelete(product.id)}
+          onClick={() => onDelete(product._id)}
           className="w-8 h-8 flex-shrink-0 border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-100 group flex items-center justify-center bg-white"
         >
           <TrashIcon />
@@ -321,6 +321,8 @@ const ProductCard = ({ product, onEdit, onDelete, onTogglePublish }) => {
     </div>
   );
 }
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -337,19 +339,32 @@ const Dashboard = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  // Products Data: Initialized from LocalStorage or Empty array (no dummy data)
-  const [products, setProducts] = useState(() => {
-    const savedProducts = localStorage.getItem('products');
-    return savedProducts ? JSON.parse(savedProducts) : [];
-  });
+  // Products Data
+  const [products, setProducts] = useState([]);
 
-  // Save to LocalStorage whenever products change
-  useEffect(() => {
-    localStorage.setItem('products', JSON.stringify(products));
-  }, [products]);
-  
   // Toast
   const [toast, setToast] = useState(null);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/products${search ? `?search=${search}` : ''}`);
+      const data = await res.json();
+      if (data.success) {
+        setProducts(data.products);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [search]); // Re-fetch when search changes
 
   const handleLogout = () => {
     logout();
@@ -357,50 +372,90 @@ const Dashboard = () => {
     setUserDropdownOpen(false);
   };
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+  const handleCreateProduct = async (data) => {
+    try {
+      const res = await fetch(`${API_BASE}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      if (result.success) {
+        setProducts(prev => [result.product, ...prev]);
+        setIsAddModalOpen(false);
+        showToast("Product added Successfully");
+        setView('products');
+      } else {
+        showToast(result.message || "Failed to add product");
+      }
+    } catch (error) {
+      showToast("Error adding product");
+    }
   };
 
-  const handleCreateProduct = (data) => {
-    const newProduct = {
-      id: Date.now(),
-      ...data,
-      published: true // Default to published
-    };
-    setProducts(prev => [newProduct, ...prev]);
-    setIsAddModalOpen(false);
-    showToast("Product added Successfully");
-    setView('products'); // Go to products view
+  const handleUpdateProduct = async (data) => {
+    try {
+      // Strip system fields
+      const { _id, id, createdAt, updatedAt, __v, ...updateData } = data;
+
+      const res = await fetch(`${API_BASE}/products/${editingProduct._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      const result = await res.json();
+      if (result.success) {
+        setProducts(prev => prev.map(p => p._id === editingProduct._id ? result.product : p));
+        setEditingProduct(null);
+        showToast("Product updated Successfully");
+      } else {
+        showToast(result.message || "Failed to update product");
+      }
+    } catch (error) {
+       showToast("Error updating product");
+    }
   };
 
-  const handleUpdateProduct = (data) => {
-    setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...data } : p));
-    setEditingProduct(null);
-    showToast("Product updated Successfully");
+  const handleDeleteProduct = async (id) => {
+    // id is likely _id from mongo
+    if(!window.confirm("Are you sure?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/products/${id}`, {
+        method: 'DELETE'
+      });
+      const result = await res.json();
+      if (result.success) {
+        setProducts(prev => prev.filter(p => p._id !== id));
+        showToast("Product Deleted Successfully");
+      }
+    } catch (error) {
+      showToast("Error deleting product");
+    }
   };
 
-  const handleDeleteProduct = (id) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-    showToast("Product Deleted Successfully");
-  };
-
-  const handleTogglePublish = (id) => {
-    const updatedProducts = products.map(p => {
-       if (p.id === id) {
-          const newStatus = !p.published;
-          return { ...p, published: newStatus };
+  const handleTogglePublish = async (id) => {
+    try {
+       const res = await fetch(`${API_BASE}/products/${id}/publish`, {
+         method: 'PATCH'
+       });
+       const result = await res.json();
+       if (result.success) {
+          setProducts(prev => prev.map(p => p._id === id ? result.product : p));
+          // showToast("Product status updated");
        }
-       return p;
-    });
-    setProducts(updatedProducts);
+    } catch (error) {
+       showToast("Error updating status");
+    }
   };
 
-  // Filter products for Home View (Tabbed)
+  // Filter products for Home View (Tabbed) - Logic adjusted for backend data
+  // Since we fetch all or search, local filtering for tabs is still fine for small dataset, 
+  // but ideally backend handles tabs. User instructions implied simple replacement.
   const homeFilteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    // Search is handled by API mostly, but if we typed and API returned, this is fine. 
+    // Wait, API search replaces the list. So we just filter by tab here.
     const matchesTab = activeTab === 'published' ? p.published : !p.published;
-    return matchesSearch && matchesTab;
+    return matchesTab;
   });
 
   // Products for Products View (All or Master List)
@@ -566,7 +621,7 @@ const Dashboard = () => {
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 animate-in fade-in duration-500">
                     {homeFilteredProducts.map(product => (
                        <ProductCard 
-                         key={product.id} 
+                         key={product._id} 
                          product={product} 
                          onEdit={setEditingProduct}
                          onDelete={handleDeleteProduct}
@@ -626,7 +681,7 @@ const Dashboard = () => {
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 animate-in fade-in duration-500">
                   {allProducts.map(product => (
                       <ProductCard 
-                        key={product.id} 
+                        key={product._id} 
                         product={product} 
                         onEdit={setEditingProduct}
                         onDelete={handleDeleteProduct}
