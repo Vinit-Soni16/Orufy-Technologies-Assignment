@@ -149,8 +149,8 @@ exports.sendLoginOTP = async (req, res) => {
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
         console.error('Email send failed (Dev Mode fallback):', error);
-        return res.status(200).json({
-          success: true,
+        return res.status(500).json({
+          success: false,
           message: `Email Failed (${error}). Dev Mode: OTP is ${otp}`,
           devOtp: otp,
         });
@@ -264,12 +264,13 @@ exports.resendOTP = async (req, res) => {
       const result = await sendOTPEmail(sendToEmail, otp);
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
-        console.error('Email send failed (Dev Mode fallback):', error);
-        return res.status(200).json({
-          success: true,
-          message: `Email Failed (${error}). Dev Mode: OTP is ${otp}`,
-          devOtp: otp,
-        });
+        if (sent === false && error) {
+          console.error('Email send failed (Strict Mode):', error);
+          return res.status(500).json({
+            success: false,
+            message: 'Unable to send OTP email. Please contact support.'
+          });
+        }
       }
       if (sent) {
         return res.status(200).json({ success: true, message: 'OTP sent to your email.' });
