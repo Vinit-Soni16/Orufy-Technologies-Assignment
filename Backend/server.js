@@ -42,9 +42,9 @@ mongoose
 
     // FIX: Drop problematic index causing "E11000 duplicate key error collection: test.users index: phone_1 dup key: { phone: null }"
     try {
-      const usersCollection = mongoose.connection.collection('users');
-      // We attempt to drop it. If it doesn't exist, it errors, which we catch and ignore.
-      await usersCollection.dropIndex('phone_1');
+      // We use the Model to access the native collection safely
+      const User = mongoose.model('User');
+      await User.collection.dropIndex('phone_1');
       console.log('[Fix] Dropped old phone_1 index. Mongoose will recreate it correctly as sparse.');
     } catch (err) {
       console.log('[Info] phone_1 index cleanup: ', err.message); // Likely "index not found", which is fine
