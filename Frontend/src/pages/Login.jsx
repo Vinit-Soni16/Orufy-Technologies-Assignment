@@ -68,9 +68,11 @@ const Login = () => {
         }
         setEmailError('');
       } else {
+        console.error("Server Error Details:", data); // Added for debugging
         setEmailError(data.message || 'Something went wrong.');
       }
     } catch (err) {
+      console.error("Network/Fetch Error:", err);
       setEmailError('Backend is not running. Start it: open Backend folder and run npm run dev');
     } finally {
       setLoading(false);
