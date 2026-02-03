@@ -13,12 +13,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
     trim: true,
-    index: { unique: true, sparse: true }, 
+    index: { unique: true, sparse: true },
   },
   password: {
     type: String,
     required: [true, 'Password cannot be empty'],
-    select: false, 
+    select: false,
   },
   otp: {
     type: String,
@@ -27,14 +27,16 @@ const userSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
     default: null,
-    index: { expireAfterSeconds: 0 } 
+    type: Date,
+    default: null,
+    // index: { expireAfterSeconds: 0 }  <-- REMOVED: This deletes the USER! 
   },
   isVerified: {
     type: Boolean,
     default: false,
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
 
 
