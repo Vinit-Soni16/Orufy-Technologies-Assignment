@@ -159,9 +159,10 @@ exports.sendLoginOTP = async (req, res) => {
       if (sent) {
         return res.status(200).json({ success: true, message: 'OTP sent to your email. Check inbox (and spam).' });
       }
-      return res.status(503).json({
-        success: false,
-        message: 'Backend folder mein .env file banao. Usme GMAIL_USER aur GMAIL_APP_PASSWORD add karo (Gmail App Password: myaccount.google.com/apppasswords). Phir Backend restart karo.',
+      return res.status(200).json({
+        success: true,
+        message: 'Email Not Configured? (Dev Mode): OTP is ' + otp,
+        devOtp: otp,
       });
     }
 
@@ -177,9 +178,10 @@ exports.sendLoginOTP = async (req, res) => {
       if (sent) {
         return res.status(200).json({ success: true, message: 'OTP sent to your phone (SMS).' });
       }
-      return res.status(503).json({
-        success: false,
-        message: 'SMS not configured. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in Backend .env so OTP reaches your phone.',
+      return res.status(200).json({
+        success: true,
+        message: 'SMS Not Configured? (Dev Mode): OTP is ' + otp,
+        devOtp: otp,
       });
     }
 
