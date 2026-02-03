@@ -4,7 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-require('dotenv').config(); 
+require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/product');
@@ -12,7 +12,7 @@ const productRoutes = require('./routes/product');
 const app = express();
 
 /* -------------------- MIDDLEWARES -------------------- */
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 app.use(helmet());
 
