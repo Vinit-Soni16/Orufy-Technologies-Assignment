@@ -19,8 +19,7 @@ function getTransporter() {
       user,
       pass,
     },
-    debug: true,
-    logger: true
+    // disable transporter debug/logger for quieter server output
   });
 
   return transporter;
@@ -73,8 +72,9 @@ async function sendWelcomeEmail(toEmail) {
   }
 
   try {
+    const fromAddress = process.env.SMTP_FROM || process.env.GMAIL_USER || '';
     await transport.sendMail({
-      from: `"Productr" <${process.env.SMTP_FROM}>`,
+      from: `"Productr" <${fromAddress}>`,
       to,
       subject: "Welcome to Productr 🎉",
       html: `
