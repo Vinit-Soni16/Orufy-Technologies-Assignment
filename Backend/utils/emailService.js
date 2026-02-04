@@ -11,9 +11,10 @@ function getTransporter() {
     service: 'gmail',
     auth: { user, pass },
     // Fail fast if connection hangs (common in free hosting)
-    connectionTimeout: 2000,
-    greetingTimeout: 2000,
-    socketTimeout: 5000,
+   connectionTimeout: 10000,
+greetingTimeout: 10000,
+socketTimeout: 20000,
+
   });
   return transporter;
 }
@@ -25,8 +26,9 @@ async function sendOTPEmail(toEmail, otp) {
   }
   const transport = getTransporter();
   if (!transport) {
-    return { sent: false, dev: true, devOtp: otp };
-  }
+  return { sent: false, error: "Email service not configured" };
+}
+
   try {
     await transport.sendMail({
       from: process.env.GMAIL_USER,
