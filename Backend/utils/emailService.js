@@ -5,27 +5,22 @@ let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
 
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
 
-  if (!host || !port || !user || !pass) {
-    console.error("[Email] SMTP env variables missing");
+  if (!user || !pass) {
+    console.error("[Email] GMAIL env variables missing");
     return null;
   }
 
   transporter = nodemailer.createTransport({
-    host,
-    port: Number(port),
-    secure: false, // TLS (587)
+    service: 'gmail', // Built-in transport for Gmail
     auth: {
       user,
       pass,
     },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
-    socketTimeout: 20000,
+    debug: true,
+    logger: true
   });
 
   return transporter;
@@ -45,7 +40,7 @@ async function sendOTPEmail(toEmail, otp) {
 
   try {
     await transport.sendMail({
-      from: `"Productr OTP" <${process.env.SMTP_FROM}>`, // VERIFIED SENDER
+      from: `"Productr OTP" <${process.env.GMAIL_USER}>`, // VERIFIED SENDER
       to,
       subject: "Your Productr Login OTP",
       text: `Your OTP is ${otp}. It is valid for 10 minutes.`,

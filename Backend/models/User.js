@@ -26,7 +26,6 @@ const userSchema = new mongoose.Schema({
   otpExpiry: {
     type: Date,
     default: null,
-    // index: { expireAfterSeconds: 0 }  <-- REMOVED: This deletes the USER! 
   },
   isVerified: {
     type: Boolean,

@@ -265,13 +265,11 @@ exports.resendOTP = async (req, res) => {
       const result = await sendOTPEmail(sendToEmail, otp);
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
-        if (sent === false && error) {
-          console.error('Email send failed (Strict Mode):', error);
-          return res.status(500).json({
-            success: false,
-            message: 'Unable to send OTP email. Please contact support.'
-          });
-        }
+        console.error('Email send failed (Strict Mode):', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Unable to send OTP email. Please contact support.'
+        });
       }
       if (sent) {
         return res.status(200).json({ success: true, message: 'OTP sent to your email.' });

@@ -350,14 +350,16 @@ const Dashboard = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    setUserDropdownOpen(false);
+  };
+
   const fetchProducts = async () => {
     try {
       const token = localStorage.getItem('productr_token');
-      const headers = { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      };
-
+      // Fix: headers definition was unused, removed it
       const res = await fetch(`${API_BASE}/products${search ? `?search=${search}` : ''}`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.status === 401) {
         handleLogout();
@@ -372,15 +374,19 @@ const Dashboard = () => {
     }
   };
 
+  // Fetch products on component mount
   useEffect(() => {
     fetchProducts();
-  }, [search]); // Re-fetch when search changes
+  }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    setUserDropdownOpen(false);
-  };
+  // Refetch when search changes
+  useEffect(() => {
+    if (search) {
+      fetchProducts();
+    } else if (search === '') {
+      fetchProducts();
+    }
+  }, [search]);
 
   const handleCreateProduct = async (data) => {
     try {
@@ -427,8 +433,8 @@ const Dashboard = () => {
       } else {
         showToast(result.message || "Failed to update product");
       }
-    } catch (error) {
-       showToast("Error updating product");
+    } catch (_) {
+      showToast("Error updating product");
     }
   };
 
@@ -445,7 +451,7 @@ const Dashboard = () => {
         setProducts(prev => prev.filter(p => p._id !== id));
         showToast("Product Deleted Successfully");
       }
-    } catch (error) {
+    } catch (_) {
       showToast("Error deleting product");
     }
   };
@@ -461,7 +467,7 @@ const Dashboard = () => {
           setProducts(prev => prev.map(p => p._id === id ? result.product : p));
           // showToast("Product status updated");
        }
-    } catch (error) {
+    } catch (_) {
        showToast("Error updating status");
     }
   };

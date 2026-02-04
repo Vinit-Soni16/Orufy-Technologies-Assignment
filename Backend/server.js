@@ -1,10 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-require('dotenv').config();
+
 
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/product');
@@ -12,25 +13,12 @@ const productRoutes = require('./routes/product');
 const app = express();
 app.set("trust proxy", 1);
 /* -------------------- MIDDLEWARES -------------------- */
-// FIX: CORS Configuration - Allow specific origins for Vercel and Localhost
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'https://productr-app.vercel.app',
-  'https://orufy-technologies-assignment-beta.vercel.app',
-  // Allow any Vercel preview deployment for this user if needed, or just specific ones
-];
-
+// CORS Configuration - Allow localhost on any port
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    // Check if origin is allowed OR if it's a Vercel deployment ending with .vercel.app
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (!origin || origin.startsWith('http://localhost:')) {
       callback(null, true);
     } else {
-      console.log('Blocked by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
