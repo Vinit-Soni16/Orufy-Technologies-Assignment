@@ -4,9 +4,10 @@ const jwt = require('jsonwebtoken');
 const { sendOTPEmail, sendWelcomeEmail } = require('../utils/emailService');
 const { sendOTPSMS } = require('../utils/smsService');
 
-const generateOTP = () => {
-  return Math.floor(10000 + Math.random() * 90000).toString();
-};
+/* -------------------- HELPERS -------------------- */
+
+const generateOTP = () =>
+  Math.floor(10000 + Math.random() * 90000).toString();
 
 function isEmail(str) {
   return typeof str === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str.trim());
@@ -18,12 +19,6 @@ function isPhone(str) {
   return digits.length >= 10 && digits.length <= 15;
 }
 
-function normalizeEmail(str) {
-  if (!str || typeof str !== 'string') return '';
-  const t = str.trim();
-  return isEmail(t) ? t.toLowerCase() : '';
-}
-
 function normalizePhone(str) {
   if (!str || typeof str !== 'string') return '';
   return str.trim().replace(/\s/g, '');
@@ -32,71 +27,84 @@ function normalizePhone(str) {
 async function findUserByIdentifier(identifier) {
   if (!identifier || typeof identifier !== 'string') return null;
   const trimmed = identifier.trim();
+
   if (isEmail(trimmed)) {
-    const lower = trimmed.toLowerCase();
-    return await User.findOne({ email: lower });
+    return User.findOne({ email: trimmed.toLowerCase() });
   }
+
   if (isPhone(trimmed)) {
-    const phoneNorm = normalizePhone(trimmed);
-    return await User.findOne({ phone: phoneNorm });
+    return User.findOne({ phone: normalizePhone(trimmed) });
   }
+
   return null;
 }
 
-// POST /api/signup - Email/phone + password, no OTP. Welcome email. Dashboard.
+/* -------------------- SIGNUP -------------------- */
+
 exports.signup = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
-    const emailStr = typeof email === 'string' ? email.trim() : '';
-    const phoneStr = typeof phone === 'string' ? phone.trim() : '';
-    const passwordStr = typeof password === 'string' ? password : '';
 
-    if (!emailStr && !phoneStr) {
-      return res.status(400).json({ success: false, message: 'Please enter email or phone number.' });
-    }
-    if (!passwordStr || passwordStr.length < 1) {
-      return res.status(400).json({ success: false, message: 'Please enter a password.' });
-    }
-    if (emailStr && !isEmail(emailStr)) {
-      return res.status(400).json({ success: false, message: 'Please enter a valid email.' });
-    }
-    if (phoneStr && !isPhone(phoneStr)) {
-      return res.status(400).json({ success: false, message: 'Please enter a valid phone number.' });
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter email or phone number.',
+      });
     }
 
-    const emailNorm = emailStr ? emailStr.toLowerCase() : null;
-    const phoneNorm = phoneStr ? normalizePhone(phoneStr) : null;
-
-    if (emailNorm) {
-      const existing = await User.findOne({ email: emailNorm });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'An account with this email already exists. Please login.' });
-      }
-    }
-    if (phoneNorm) {
-      const existing = await User.findOne({ phone: phoneNorm });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'An account with this phone already exists. Please login.' });
-      }
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a password.',
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(passwordStr, 10);
+    if (email && !isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid email.',
+      });
+    }
+
+    if (phone && !isPhone(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid phone number.',
+      });
+    }
+
+    if (email && (await User.findOne({ email: email.toLowerCase() }))) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists.',
+      });
+    }
+
+    if (phone && (await User.findOne({ phone: normalizePhone(phone) }))) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this phone already exists.',
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await User.create({
-      email: emailNorm || undefined,
-      // Fix: Ensure we send undefined (not null) if phone is empty, to avoid unique index issues
-      phone: phoneNorm || undefined,
+      email: email ? email.toLowerCase() : undefined,
+      phone: phone ? normalizePhone(phone) : undefined,
       password: hashedPassword,
       isVerified: true,
     });
 
-    const sendTo = emailNorm;
-    if (sendTo && isEmail(sendTo)) {
-      sendWelcomeEmail(sendTo).catch(err => console.error('[Auth] Welcome email error:', err.message));
+    if (email) {
+      sendWelcomeEmail(email.toLowerCase()).catch(() => {});
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_123', {
-      expiresIn: '30d',
-    });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '30d' }
+    );
 
     res.status(201).json({
       success: true,
@@ -105,122 +113,124 @@ exports.signup = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error("Signup Error:", err);
-    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    console.error('Signup Error:', err);
+    res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
 
-// POST /api/login/send-otp - Email → OTP to inbox; Phone → OTP via SMS
+/* -------------------- SEND LOGIN OTP -------------------- */
+
 exports.sendLoginOTP = async (req, res) => {
   try {
-    const raw = req.body && (req.body.email ?? req.body.phone ?? req.body.identifier);
-    const identifier = typeof raw === 'string' ? String(raw).trim() : '';
+    const identifier =
+      req.body?.email ?? req.body?.phone ?? req.body?.identifier;
+
     if (!identifier) {
-      return res.status(400).json({ success: false, message: 'Please enter the email or phone number you used at signup.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter email or phone number.',
+      });
     }
+
     if (!isEmail(identifier) && !isPhone(identifier)) {
-      return res.status(400).json({ success: false, message: 'Enter a valid email (e.g. you@mail.com) or 10-digit phone number.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Enter a valid email or phone number.',
+      });
     }
 
     const user = await findUserByIdentifier(identifier);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'No account found with this email/phone. Please sign up first.' });
+      return res.status(404).json({
+        success: false,
+        message: 'No account found. Please sign up first.',
+      });
     }
 
     const otp = generateOTP();
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    user.updatedAt = new Date();
     await user.save();
 
+    /* -------- EMAIL OTP -------- */
     if (isEmail(identifier)) {
-      const sendToEmail = user.email && isEmail(user.email) ? user.email.trim().toLowerCase() : null;
-      if (!sendToEmail) {
-        return res.status(400).json({
-          success: false,
-          message: 'We need your email to send OTP. Please sign up with email.',
-        });
-      }
-      const result = await sendOTPEmail(sendToEmail, otp);
-      const { sent, error, devOtp } = result;
-      if (sent === false && error) {
-        console.error('Email send failed (Dev Mode fallback):', error);
-        // Dev Mode: Return OTP in response if email fails
-        return res.status(200).json({
-          success: true,
-          message: `Email Failed (${error}). Dev Mode: OTP is ${otp}`,
-          devOtp: otp,
-        });
-      }
-      if (sent) {
-        return res.status(200).json({ success: true, message: 'OTP sent to your email. Check inbox (and spam).' });
-      }
-      return res.status(500).json({
-        success: false,
-        message: 'Email service not configured correctly.',
-      });
-    }
+      const result = await sendOTPEmail(user.email, otp);
 
-    if (isPhone(identifier)) {
-      const result = await sendOTPSMS(identifier, otp);
-      const { sent, error, devOtp } = result;
-      if (sent === false && error && !devOtp) {
-        console.error('SMS send failed (Dev Mode fallback):', error);
-        return res.status(200).json({
-          success: true,
-          message: `SMS Failed (${error}). Dev Mode: OTP is ${otp}`,
-          devOtp: otp,
+      if (!result.sent) {
+        console.error('Email OTP failed:', result.error);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to send OTP email. Please try again.',
         });
       }
-      if (sent) {
-        return res.status(200).json({ success: true, message: 'OTP sent to your phone (SMS).' });
-      }
+
       return res.status(200).json({
         success: true,
-        message: 'SMS Not Configured? (Dev Mode): OTP is ' + otp,
-        devOtp: otp,
+        message: 'OTP sent to your email. Please check inbox or spam.',
       });
     }
 
-    return res.status(400).json({ success: false, message: 'Invalid input.' });
+    /* -------- SMS OTP (OPTIONAL) -------- */
+    if (isPhone(identifier)) {
+      const result = await sendOTPSMS(identifier, otp);
+
+      if (!result.sent) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to send OTP SMS.',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'OTP sent to your phone.',
+      });
+    }
   } catch (err) {
-    console.error(err);
+    console.error('Send OTP Error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
 
-// POST /api/login/verify-otp
+/* -------------------- VERIFY OTP -------------------- */
+
 exports.verifyLoginOTP = async (req, res) => {
   try {
-    const raw = req.body && (req.body.email ?? req.body.phone ?? req.body.identifier);
-    const identifier = typeof raw === 'string' ? String(raw).trim() : '';
-    const otp = req.body && (req.body.otp ?? req.body.otpCode);
+    const identifier =
+      req.body?.email ?? req.body?.phone ?? req.body?.identifier;
+    const otp = req.body?.otp;
+
     if (!identifier || !otp) {
-      return res.status(400).json({ success: false, message: 'Email/phone and OTP are required.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Email/phone and OTP are required.',
+      });
     }
 
     const user = await findUserByIdentifier(identifier);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
+    if (!user || user.otp !== String(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP.',
+      });
     }
-    if (!user.otp || user.otp !== String(otp).trim()) {
-      return res.status(400).json({ success: false, message: 'Please Enter Valid OTP' });
-    }
+
     if (user.otpExpiry && new Date() > user.otpExpiry) {
-      user.otp = null;
-      user.otpExpiry = null;
-      await user.save();
-      return res.status(400).json({ success: false, message: 'OTP expired. Please request a new one.' });
+      return res.status(400).json({
+        success: false,
+        message: 'OTP expired. Please request a new one.',
+      });
     }
 
     user.otp = null;
     user.otpExpiry = null;
-    user.updatedAt = new Date();
     await user.save();
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_123', {
-      expiresIn: '30d',
-    });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '30d' }
+    );
 
     res.status(200).json({
       success: true,
@@ -229,82 +239,71 @@ exports.verifyLoginOTP = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error(err);
+    console.error('Verify OTP Error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
 
-// POST /api/resend-otp
+/* -------------------- RESEND OTP -------------------- */
+
 exports.resendOTP = async (req, res) => {
   try {
-    const raw = req.body && (req.body.email ?? req.body.phone ?? req.body.identifier);
-    const identifier = typeof raw === 'string' ? String(raw).trim() : '';
+    const identifier =
+      req.body?.email ?? req.body?.phone ?? req.body?.identifier;
+
     if (!identifier) {
-      return res.status(400).json({ success: false, message: 'Please enter your email or phone number.' });
-    }
-    if (!isEmail(identifier) && !isPhone(identifier)) {
-      return res.status(400).json({ success: false, message: 'Please enter a valid email or phone number.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter email or phone number.',
+      });
     }
 
     const user = await findUserByIdentifier(identifier);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'No account found. Please sign up.' });
+      return res.status(404).json({
+        success: false,
+        message: 'No account found.',
+      });
     }
 
     const otp = generateOTP();
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-    user.updatedAt = new Date();
     await user.save();
 
     if (isEmail(identifier)) {
-      const sendToEmail = user.email && isEmail(user.email) ? user.email.trim().toLowerCase() : null;
-      if (!sendToEmail) {
-        return res.status(400).json({ success: false, message: 'We need your email to send OTP.' });
+      const result = await sendOTPEmail(user.email, otp);
+
+      if (!result.sent) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to resend OTP email.',
+        });
       }
-      const result = await sendOTPEmail(sendToEmail, otp);
-      const { sent, error, devOtp } = result;
-      if (sent === false && error) {
-        if (sent === false && error) {
-          console.error('Email send failed (Strict Mode):', error);
-          return res.status(500).json({
-            success: false,
-            message: 'Unable to send OTP email. Please contact support.'
-          });
-        }
-      }
-      if (sent) {
-        return res.status(200).json({ success: true, message: 'OTP sent to your email.' });
-      }
-      return res.status(503).json({
-        success: false,
-        message: 'Add GMAIL_USER and GMAIL_APP_PASSWORD in Backend .env so OTP reaches your email.',
+
+      return res.status(200).json({
+        success: true,
+        message: 'OTP resent to your email.',
       });
     }
 
     if (isPhone(identifier)) {
       const result = await sendOTPSMS(identifier, otp);
-      const { sent, error } = result;
-      if (sent === false && error) {
-        console.error('SMS send failed (Dev Mode fallback):', error);
-        return res.status(200).json({
-          success: true,
-          message: `SMS Failed (${error}). Dev Mode: OTP is ${otp}`,
-          devOtp: otp,
+
+      if (!result.sent) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to resend OTP SMS.',
         });
       }
-      if (sent) {
-        return res.status(200).json({ success: true, message: 'OTP sent to your phone.' });
-      }
-      return res.status(503).json({
-        success: false,
-        message: 'Add TWILIO_* in Backend .env so OTP reaches your phone (SMS).',
+
+      return res.status(200).json({
+        success: true,
+        message: 'OTP resent to your phone.',
       });
     }
-
-    return res.status(400).json({ success: false, message: 'Invalid input.' });
   } catch (err) {
-    console.error(err);
+    console.error('Resend OTP Error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
