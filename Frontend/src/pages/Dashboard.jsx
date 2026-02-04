@@ -352,7 +352,13 @@ const Dashboard = () => {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch(`${API_BASE}/products${search ? `?search=${search}` : ''}`);
+      const token = localStorage.getItem('productr_token');
+      const headers = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+
+      const res = await fetch(`${API_BASE}/products${search ? `?search=${search}` : ''}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       if (data.success) {
         setProducts(data.products);
@@ -376,7 +382,10 @@ const Dashboard = () => {
     try {
       const res = await fetch(`${API_BASE}/products`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('productr_token')}`
+        },
         body: JSON.stringify(data)
       });
       const result = await res.json();
@@ -400,7 +409,10 @@ const Dashboard = () => {
 
       const res = await fetch(`${API_BASE}/products/${editingProduct._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('productr_token')}`
+        },
         body: JSON.stringify(updateData)
       });
       const result = await res.json();
@@ -421,7 +433,8 @@ const Dashboard = () => {
     if(!window.confirm("Are you sure?")) return;
     try {
       const res = await fetch(`${API_BASE}/products/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('productr_token')}` }
       });
       const result = await res.json();
       if (result.success) {
@@ -436,7 +449,8 @@ const Dashboard = () => {
   const handleTogglePublish = async (id) => {
     try {
        const res = await fetch(`${API_BASE}/products/${id}/publish`, {
-         method: 'PATCH'
+         method: 'PATCH',
+         headers: { 'Authorization': `Bearer ${localStorage.getItem('productr_token')}` }
        });
        const result = await res.json();
        if (result.success) {

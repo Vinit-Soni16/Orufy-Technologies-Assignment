@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { sendOTPEmail, sendWelcomeEmail } = require('../utils/emailService');
 const { sendOTPSMS } = require('../utils/smsService');
 
@@ -93,10 +94,15 @@ exports.signup = async (req, res) => {
       sendWelcomeEmail(sendTo).catch(err => console.error('[Auth] Welcome email error:', err.message));
     }
 
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_123', {
+      expiresIn: '30d',
+    });
+
     res.status(201).json({
       success: true,
       message: 'Account created. You can now login.',
       user: { email: user.email, phone: user.phone },
+      token,
     });
   } catch (err) {
     console.error("Signup Error:", err);
@@ -138,10 +144,12 @@ exports.sendLoginOTP = async (req, res) => {
       const result = await sendOTPEmail(sendToEmail, otp);
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
-        console.error('Email send failed:', error);
-        return res.status(500).json({
-          success: false,
-          message: `Email Error: ${error} (Check Render Logs for details)`,
+        console.error('Email send failed (Dev Mode fallback):', error);
+        // Dev Mode: Return OTP in response if email fails
+        return res.status(200).json({
+          success: true,
+          message: `Email Failed (${error}). Dev Mode: OTP is ${otp}`,
+          devOtp: otp,
         });
       }
       if (sent) {
@@ -210,10 +218,15 @@ exports.verifyLoginOTP = async (req, res) => {
     user.updatedAt = new Date();
     await user.save();
 
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_123', {
+      expiresIn: '30d',
+    });
+
     res.status(200).json({
       success: true,
       message: 'Login successful.',
       user: { email: user.email, phone: user.phone },
+      token,
     });
   } catch (err) {
     console.error(err);
