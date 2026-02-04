@@ -149,9 +149,10 @@ exports.sendLoginOTP = async (req, res) => {
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
         console.error('Email send failed (Dev Mode fallback):', error);
-        return res.status(500).json({
-          success: false,
-          message: `Email Failed (${error}). Dev Mode: OTP is ${otp}`,
+        // FIX: Return 200/true so frontend shows the OTP screen
+        return res.status(200).json({
+          success: true,
+          message: `Email Failed (${error}). Dev Mode: Your OTP is ${otp}`,
           devOtp: otp,
         });
       }
