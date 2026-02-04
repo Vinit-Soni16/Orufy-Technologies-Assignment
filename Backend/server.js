@@ -13,29 +13,22 @@ const app = express();
 app.set("trust proxy", 1);
 /* -------------------- MIDDLEWARES -------------------- */
 // FIX: CORS Configuration - Allow specific origins for Vercel and Localhost
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'https://orufy-technologies-assignment-beta.vercel.app',
-  'https://orufy-technologies-assignment-9m4yzdpmr.vercel.app', // User's specific Vercel URL
-  
-  'https://productr-app.vercel.app' // Just in case
-];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    // Allow if origin is in the allowed list
-    if (allowedOrigins.some(o => origin.startsWith(o)) || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('Blocked by CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://orufy-technologies-assignment-9m4yzdpmr.vercel.app',
+    'https://orufy-technologies-assignment-beta.vercel.app',
+    'https://productr-app.vercel.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+app.options('*', cors());
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet());
