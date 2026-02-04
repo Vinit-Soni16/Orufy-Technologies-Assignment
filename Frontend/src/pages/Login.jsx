@@ -11,6 +11,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '']); // 5 boxes
   const [loading, setLoading] = useState(false);
+  const [info, setInfo] = useState('');
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
@@ -62,6 +63,10 @@ const Login = () => {
         setStep('otp');
         setOtp(['', '', '', '', '']);
         setResendTimer(20);
+        
+        // Show the message from backend (e.g., "OTP sent" or "Email Failed... here is code")
+        setInfo(data.message || '');
+
         if (data.devOtp) {
           setDevOtp(data.devOtp);
           const digits = String(data.devOtp).split('').slice(0, 5);
@@ -234,7 +239,7 @@ const Login = () => {
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-6">
               <p className="text-gray-600 text-sm font-medium">Enter OTP</p>
-              {/* Dev Mode Alert Removed - Strict Email Only */}
+              {info && <p className="text-sm text-blue-600 text-center bg-blue-50 p-2 rounded mb-2">{info}</p>}
               <div className="flex gap-3 justify-center" onPaste={handleOtpPaste}>
                 {otp.map((digit, i) => (
                   <input
