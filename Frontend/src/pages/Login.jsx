@@ -15,7 +15,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
-  const [devOtp, setDevOtp] = useState('');
 
   const otpInputRefs = React.useRef([]);
 
@@ -55,7 +54,7 @@ const Login = () => {
       try {
         data = await res.json();
       } catch (_) {
-        setEmailError('Server error. Is Backend running? Start it: npm run dev in Backend folder.');
+        setEmailError('Server error. Is Backend running?');
         setLoading(false);
         return;
       }
@@ -68,12 +67,10 @@ const Login = () => {
         setInfo(data.message || '');
         setEmailError('');
       } else {
-        console.error("Server Error Details:", data); // Added for debugging
         setEmailError(data.message || 'Something went wrong.');
       }
     } catch (err) {
-      console.error("Network/Fetch Error:", err);
-      setEmailError('Backend is not running. Start it: open Backend folder and run npm run dev');
+      setEmailError('Backend is not running. Please check your connection.');
     } finally {
       setLoading(false);
     }

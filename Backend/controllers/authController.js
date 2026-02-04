@@ -90,18 +90,7 @@ exports.signup = async (req, res) => {
 
     const sendTo = emailNorm;
     if (sendTo && isEmail(sendTo)) {
-      try {
-        // Run in background/non-blocking or just catch error so we don't fail the request
-        sendWelcomeEmail(sendTo).then(({ sent, error }) => {
-          if (sent === false && error) {
-            console.error('[Auth] Welcome email failed (non-fatal):', error);
-          } else if (!sent && !error) {
-            console.log(`[DEV] Welcome email would be sent to ${sendTo}`);
-          }
-        }).catch(err => console.error('[Auth] Welcome email crash:', err));
-      } catch (e) {
-        console.error('[Auth] Welcome email setup error:', e);
-      }
+      sendWelcomeEmail(sendTo).catch(err => console.error('[Auth] Welcome email error:', err.message));
     }
 
     res.status(201).json({

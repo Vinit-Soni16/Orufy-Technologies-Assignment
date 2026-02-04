@@ -56,7 +56,6 @@ const Signup = () => {
         if (data.user) login(data.user);
         navigate('/dashboard');
       } else {
-        console.error("Signup Error Details:", data);
         setError(data.message || 'Something went wrong.');
       }
     } catch (err) {
