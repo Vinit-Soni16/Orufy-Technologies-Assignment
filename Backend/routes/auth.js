@@ -8,3 +8,4 @@ router.post('/login/verify-otp', authController.verifyLoginOTP);
 router.post('/resend-otp', authController.resendOTP);
 
 module.exports = router;
+
