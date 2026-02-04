@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-app.set("trust proxy", 1); 
 
 require('dotenv').config();
 
@@ -11,7 +10,7 @@ const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/product');
 
 const app = express();
-
+app.set("trust proxy", 1); 
 /* -------------------- MIDDLEWARES -------------------- */
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '50mb' }));
