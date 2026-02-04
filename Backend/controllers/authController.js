@@ -152,7 +152,7 @@ exports.sendLoginOTP = async (req, res) => {
         console.error('Email send failed:', error);
         return res.status(500).json({
           success: false,
-          message: 'Failed to send OTP email. Please checks Backend logs or credentials.',
+          message: `Email Error: ${error} (Check Render Logs for details)`,
         });
       }
       if (sent) {
