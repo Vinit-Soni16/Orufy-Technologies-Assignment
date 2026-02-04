@@ -16,14 +16,18 @@ app.set("trust proxy", 1);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'https://productr-app.vercel.app',
+  'https://orufy-technologies-assignment-beta.vercel.app',
+  // Allow any Vercel preview deployment for this user if needed, or just specific ones
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    // Allow if origin is in the allowed list
-    if (allowedOrigins.some(o => origin.startsWith(o)) || allowedOrigins.includes(origin)) {
+
+    // Check if origin is allowed OR if it's a Vercel deployment ending with .vercel.app
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
       console.log('Blocked by CORS:', origin);
