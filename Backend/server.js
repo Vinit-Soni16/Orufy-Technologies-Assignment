@@ -53,18 +53,6 @@ mongoose
     // DB Connected
     console.log('MongoDB connected successfully');
 
-    // FIX: Drop problematic index causing "E11000 duplicate key error collection: test.users index: phone_1 dup key: { phone: null }"
-    try {
-      const User = mongoose.model('User');
-      // Attempt to drop the old non-sparse index
-      await User.collection.dropIndex('phone_1');
-      console.log('[Fix] Dropped old phone_1 index. Mongoose will recreate it correctly as sparse.');
-    } catch (err) {
-      // It's fine if the index doesn't exist
-      console.log('[Info] phone_1 index check:', err.message);
-    }
-
-
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
