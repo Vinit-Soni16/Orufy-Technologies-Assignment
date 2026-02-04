@@ -149,21 +149,18 @@ exports.sendLoginOTP = async (req, res) => {
       const result = await sendOTPEmail(sendToEmail, otp);
       const { sent, error, devOtp } = result;
       if (sent === false && error) {
-        console.error('Email send failed (Dev Mode fallback):', error);
-        // FIX: Return 200/true so frontend shows the OTP screen
-        return res.status(200).json({
-          success: true,
-          message: `Email Failed (${error}). Dev Mode: Your OTP is ${otp}`,
-          devOtp: otp,
+        console.error('Email send failed:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to send OTP email. Please checks Backend logs or credentials.',
         });
       }
       if (sent) {
         return res.status(200).json({ success: true, message: 'OTP sent to your email. Check inbox (and spam).' });
       }
-      return res.status(200).json({
-        success: true,
-        message: 'Email Not Configured? (Dev Mode): OTP is ' + otp,
-        devOtp: otp,
+      return res.status(500).json({
+        success: false,
+        message: 'Email service not configured correctly.',
       });
     }
 

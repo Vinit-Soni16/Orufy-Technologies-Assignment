@@ -64,16 +64,8 @@ const Login = () => {
         setOtp(['', '', '', '', '']);
         setResendTimer(20);
         
-        // Show the message from backend (e.g., "OTP sent" or "Email Failed... here is code")
+        // Show the message from backend (e.g., "OTP sent")
         setInfo(data.message || '');
-
-        if (data.devOtp) {
-          setDevOtp(data.devOtp);
-          const digits = String(data.devOtp).split('').slice(0, 5);
-          setOtp(digits.concat(Array(5 - digits.length).fill('')));
-        } else {
-          setDevOtp('');
-        }
         setEmailError('');
       } else {
         console.error("Server Error Details:", data); // Added for debugging
