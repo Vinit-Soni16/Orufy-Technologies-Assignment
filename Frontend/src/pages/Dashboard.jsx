@@ -359,6 +359,10 @@ const Dashboard = () => {
       };
 
       const res = await fetch(`${API_BASE}/products${search ? `?search=${search}` : ''}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         setProducts(data.products);

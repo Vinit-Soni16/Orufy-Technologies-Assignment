@@ -122,7 +122,7 @@ const Login = () => {
       });
       const data = await res.json();
       if (data.success) {
-        if (data.user) login(data.user);
+        if (data.user) login({ ...data.user, token: data.token });
         navigate('/dashboard');
       } else {
         setError(data.message || 'Please Enter Valid OTP');
