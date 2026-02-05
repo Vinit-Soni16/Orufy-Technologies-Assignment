@@ -13,17 +13,12 @@ const productRoutes = require('./routes/product');
 const app = express();
 app.set("trust proxy", 1);
 /* -------------------- MIDDLEWARES -------------------- */
-// CORS Configuration - Allow localhost on any port
+
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || origin.startsWith('http://localhost:')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
+  origin: true, 
+  credentials: true,
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(helmet());
